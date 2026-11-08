@@ -1,0 +1,10 @@
+.env
+.claude/
+site/
+data/history/
+data/raw/
+data/session.json
+data/results.json
+__pycache__/
+*.pyc
+.venv/
