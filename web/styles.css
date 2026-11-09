@@ -136,3 +136,4 @@ td .nm { color: var(--muted); font-size: 12px; display: block; max-width: 220px;
 .history table td, .history table th { padding: 4px 8px; font-size: 12px; }
 
 .foot { padding: 10px 20px 24px; color: var(--muted); font-size: 12px; }
+.badge.prov { color: var(--warning); border-color: var(--warning); font-weight: 500; }

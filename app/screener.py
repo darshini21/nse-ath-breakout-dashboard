@@ -35,14 +35,23 @@ from .universe import load_universe
 
 # ----------------------------------------------------------------------------- helpers
 def to_weekly(df: pd.DataFrame) -> pd.DataFrame:
+    """Weekly OHLCV. `date` is the week's LAST ACTUAL TRADING DAY (not the Friday label), so an
+    unfinished week is dated by its latest session and never carries a future date."""
+    d = df.assign(_last=df["date"]).set_index("date")
     w = (
-        df.set_index("date")
-        .resample("W-FRI")
-        .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
+        d.resample("W-FRI")
+        .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum", "_last": "last"})
         .dropna(subset=["close"])
-        .reset_index()
+        .reset_index(drop=True)
+        .rename(columns={"_last": "date"})
     )
-    return w
+    return w[["date", "open", "high", "low", "close", "volume"]]
+
+
+def week_complete(last_date: pd.Timestamp, today: date) -> bool:
+    """True once the week containing last_date has ended (its Friday is before today)."""
+    friday = last_date + pd.Timedelta(days=(4 - last_date.weekday()) % 7)
+    return pd.Timestamp(today) > friday
 
 
 @dataclass
@@ -200,15 +209,18 @@ def analyse(symbol: str, meta: dict, daily: pd.DataFrame, p: ScreenParams, today
     # ---- Breakouts: latest base is valid and the stock is still above it, not in a new base
     if bases:
         b = bases[-1]
-        age_days = (pd.Timestamp(today) - pd.Timestamp(b.breakout_date)).days
+        age_days = max(0, (pd.Timestamp(today) - pd.Timestamp(b.breakout_date)).days)
         above_rim = last_close > b.rim_price
         fresh_enough = p.max_breakout_age_days <= 0 or age_days <= p.max_breakout_age_days
+        # A breakout in the current, unfinished week is only provisional: the weekly close isn't in yet.
+        provisional = b.breakout_idx == len(w) - 1 and not week_complete(last_date, today)
         if above_rim and dd_since_ath < p.min_depth_pct and fresh_enough:
             return {
                 **common,
                 "status": "breakout",
                 "pattern": b.pattern,
                 "base": asdict(b),
+                "provisional": provisional,
                 "days_since_breakout": age_days,
                 "pct_above_rim": round((last_close - b.rim_price) / b.rim_price * 100, 1),
                 "drawdown_since_ath_pct": round(dd_since_ath, 1),

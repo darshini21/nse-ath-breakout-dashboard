@@ -87,7 +87,27 @@ def test_approaching():
     print("approaching: ok", res["pct_below_rim"], "% below")
 
 
+
+
+def test_unfinished_week_is_provisional():
+    # Data ends on a Monday (2026-11-09) whose week is not over: the breakout in that partial week
+    # must be flagged provisional, dated by the actual last trading day, and never "days ago" < 0.
+    weekly = ramp(50, 100, 20) + cup() + [103]
+    daily = make_daily(weekly[:-1], start="2025-12-01")
+    nxt = daily["date"].max() + pd.Timedelta(days=3)  # Monday after the last Friday
+    assert nxt.weekday() == 0
+    daily = pd.concat([daily, pd.DataFrame([{"date": nxt, "open": 103, "high": 104, "low": 102, "close": 103, "volume": 100000}])], ignore_index=True)
+    res = analyse("TESTP", {"name": "Partial", "token": "6", "listing_date": "2025-12-01"}, daily, ScreenParams(), nxt.date())
+    assert res and res["status"] == "breakout", res
+    assert res["provisional"] is True
+    assert res["base"]["breakout_date"] == nxt.strftime("%Y-%m-%d"), res["base"]["breakout_date"]
+    assert res["days_since_breakout"] == 0
+    # once the week is over, the same data is a confirmed breakout
+    res2 = analyse("TESTP", {"name": "Partial", "token": "6", "listing_date": "2025-12-01"}, daily, ScreenParams(), (nxt + pd.Timedelta(days=7)).date())
+    assert res2 and res2["provisional"] is False
+    print("unfinished week provisional: ok")
+
 if __name__ == "__main__":
-    for fn in [test_u_breakout, test_w_breakout, test_u_then_w_requires_new_high, test_fallen_back_excluded, test_shallow_dip_not_a_base, test_approaching]:
+    for fn in [test_u_breakout, test_w_breakout, test_u_then_w_requires_new_high, test_fallen_back_excluded, test_shallow_dip_not_a_base, test_approaching, test_unfinished_week_is_provisional]:
         fn()
     print("all screener checks passed")

@@ -41,7 +41,7 @@
   const COLS = {
     breakouts: [
       { key: 'symbol', label: 'Stock', render: r => `${r.symbol}<span class="nm">${r.name}</span>` },
-      { key: 'pattern', label: 'Pattern', render: r => `<span class="badge ${r.pattern}">${r.pattern}</span>` },
+      { key: 'pattern', label: 'Pattern', render: r => `<span class="badge ${r.pattern}">${r.pattern}</span>${r.provisional ? ' <span class="badge prov" title="Breakout is in the current, unfinished week: the weekly close is not in yet">wk open</span>' : ''}` },
       { key: 'ltp', label: 'LTP', num: true, render: r => { const q = state.quotes[r.token]; return q ? fmt(q.ltp) : fmt(r.last_close); } },
       { key: 'change_pct', label: 'Day %', num: true, render: r => { const q = state.quotes[r.token]; return q && q.change_pct != null ? `<span class="${cls(q.change_pct)}">${pct(q.change_pct, 2)}</span>` : '—'; } },
       { key: 'rim_price', label: 'Prior ATH', num: true, render: r => fmt(r.base.rim_price), get: r => r.base.rim_price },
@@ -315,7 +315,7 @@
       ['Trough', `₹${fmt(b.trough_price)} · ${b.trough_date}`],
       ...(b.pattern === 'W' ? [['Middle peak', `₹${fmt(b.mid_peak_price)} · ${b.mid_peak_date}`], ['Second trough', `₹${fmt(b.second_trough_price)} · ${b.second_trough_date}`]] : []),
       ['Base depth / length', `${b.depth_pct}% · ${b.weeks} weeks`],
-      ['Breakout (weekly close)', `₹${fmt(b.breakout_close)} · ${b.breakout_date}`],
+      ['Breakout (weekly close)', `₹${fmt(b.breakout_close)} · ${b.breakout_date}${r.provisional ? ' · week still open, provisional' : ''}`],
       ['Breakout volume vs base avg', b.breakout_vol_ratio == null ? '—' : `${b.breakout_vol_ratio.toFixed(1)}×`],
       ['Now vs rim', pct(liveAboveRim(r))],
       ['Post-breakout high', `₹${fmt(r.ath_close)} · ${r.ath_date}`],
