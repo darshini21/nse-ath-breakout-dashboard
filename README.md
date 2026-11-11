@@ -110,7 +110,7 @@ A second page implements the three systems from the Malkansview class notes on t
 | System | Scan | Entry | Stop loss | Targets / exit |
 |---|---|---|---|---|
 | 1 · Trend following | weekly RSI(14) closes above 60 | current price | previous week's 20-week SMA | exit on a weekly close below the 20 SMA; pyramid when the SMA reaches your entry |
-| 2 · Cup | monthly chart, 5-year lookback, cup ≥ 15 % deep and ≥ 3 months | RP (neckline) + 4 % | RP − 2 % | level 1: +10/20/30 % selling a third each and trailing the SL; level 2 keeps the last third; max target = cup depth |
+| 2 · Cup | monthly chart, cup at least **5 years wide** and ≥ 15 % deep | RP (neckline) + 4 % | RP − 2 % | level 1: +10/20/30 % selling a third each and trailing the SL; level 2 keeps the last third; max target = cup depth |
 | 3 · Positional | monthly RSI(14) between 40 and 50 | high of the first green weekly candle | weekly swing low | target 1 = 1:3, target 2 = monthly swing high |
 
 Position size = (capital × risk %) ÷ (entry − SL); capital and risk are set at the top of

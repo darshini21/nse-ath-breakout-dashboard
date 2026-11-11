@@ -3,8 +3,8 @@
 System 1  Trend following (weekly): buy when weekly RSI(14) closes above 60; stop = previous
           week's 20-week SMA; exit when price closes below the 20 SMA. Pyramid when the SMA
           rises to your entry. Long only.
-System 2  Cup strategy: scan the monthly chart (5-year lookback) for a cup whose neckline is
-          the resolution point (RP). Entry = RP + 4 %, SL = RP - 2 %. Level 1 targets +10/20/30 %
+System 2  Cup strategy: scan the monthly chart for a cup at least 5 YEARS wide (the longer the
+          cup, the stronger the move) whose neckline is the resolution point (RP). Entry = RP + 4 %, SL = RP - 2 %. Level 1 targets +10/20/30 %
           (sell a third each, trail SL to the previous level); level 2 keeps the last third
           with a trailing SL; level 3 targets +20/40/60 %. Max target = cup depth above RP.
 System 3  Positional: monthly RSI(14) near 40 (never below 40). Entry above the high of the
@@ -36,13 +36,12 @@ class MalkanParams:
     ma_period: int = 20
     s1_rsi_buy: float = 60.0
     s1_fresh_weeks: int = 4          # "fresh buy" = RSI crossed 60 within this many completed weeks
-    s2_lookback_years: int = 5
+    s2_min_years: float = 5.0        # cup WIDTH: the neckline (RP) must be at least this many years old
     s2_min_depth_pct: float = 15.0
-    s2_min_months: int = 3
     s2_entry_pct: float = 4.0
     s2_sl_pct: float = 2.0
     s2_trigger_weeks: int = 8        # 4-8 weeks is the expected move window
-    s2_approach_pct: float = 10.0    # list forming cups when price is within this % below RP
+    s2_approach_pct: float = 20.0    # watchlist: forming cups with price within this % below RP
     s3_rsi_low: float = 40.0
     s3_rsi_high: float = 50.0
     s3_swing_low_weeks: int = 10
@@ -132,16 +131,15 @@ def _monthly_bases(m: pd.DataFrame, p: MalkanParams):
                 seg = closes[rim + 1 : k]
                 t = int(np.argmin(seg))
                 depth = (closes[rim] - seg[t]) / closes[rim] * 100
-                if depth >= p.s2_min_depth_pct and (k - rim) >= p.s2_min_months:
+                if depth >= p.s2_min_depth_pct and (k - rim) >= int(p.s2_min_years * 12):
                     bases.append((rim, k, rim + 1 + t, float(depth)))
             rim = k
     return bases, rim
 
 
 def system2(daily: pd.DataFrame, m: pd.DataFrame, today: date, p: MalkanParams) -> dict | None:
-    cutoff = pd.Timestamp(today) - pd.DateOffset(years=p.s2_lookback_years)
-    m = m[m["date"] >= cutoff].reset_index(drop=True)
-    if len(m) < p.s2_min_months + 2:
+    m = m.reset_index(drop=True)
+    if len(m) < int(p.s2_min_years * 12) + 2:
         return None
     closes = m["close"].to_numpy()
     bases, rim_idx = _monthly_bases(m, p)
@@ -156,14 +154,15 @@ def system2(daily: pd.DataFrame, m: pd.DataFrame, today: date, p: MalkanParams) 
         t = int(np.argmin(seg))
         depth = (R_open - seg[t]) / R_open * 100
         months = len(m) - 1 - rim_idx
-        if depth >= p.s2_min_depth_pct and months >= p.s2_min_months:
+        if depth >= p.s2_min_depth_pct and months >= int(p.s2_min_years * 12):
             cand = {"rp": R_open, "rp_date": m["date"].iloc[rim_idx], "trough": float(seg[t]),
-                    "trough_date": m["date"].iloc[rim_idx + 1 + t], "depth_pct": float(depth), "months": months, "completed": False}
+                    "trough_date": m["date"].iloc[rim_idx + 1 + t], "depth_pct": float(depth), "months": months,
+                    "completed": False, "rim_at_start": rim_idx == 0}
     # ---- else the most recent completed cup (monthly close above the rim)
     if cand is None and bases:
         ri, bi, ti, depth = bases[-1]
         cand = {"rp": float(closes[ri]), "rp_date": m["date"].iloc[ri], "trough": float(closes[ti]),
-                "trough_date": m["date"].iloc[ti], "depth_pct": depth, "months": bi - ri, "completed": True}
+                "trough_date": m["date"].iloc[ti], "depth_pct": depth, "months": bi - ri, "completed": True, "rim_at_start": ri == 0}
     if cand is None:
         return None
 
@@ -192,7 +191,9 @@ def system2(daily: pd.DataFrame, m: pd.DataFrame, today: date, p: MalkanParams) 
         "status": status,
         "rp": _r(R), "rp_date": cand["rp_date"].strftime("%Y-%m-%d"),
         "trough": _r(cand["trough"]), "trough_date": cand["trough_date"].strftime("%Y-%m-%d"),
-        "depth_pct": _r(cand["depth_pct"], 1), "months": int(cand["months"]), "cup_completed": cand["completed"],
+        "depth_pct": _r(cand["depth_pct"], 1), "months": int(cand["months"]), "years": _r(cand["months"] / 12, 1),
+        "cup_completed": cand["completed"],
+        "rim_at_data_start": bool(cand["rim_at_start"]),   # neckline is the first month we have: the cup may be even older
         "trigger_date": trigger_date.strftime("%Y-%m-%d") if trigger_date is not None else None,
         "days_since_trigger": days_since,
         "pct_vs_rp": _r((last_close - R) / R * 100, 1),

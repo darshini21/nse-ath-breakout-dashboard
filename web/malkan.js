@@ -168,14 +168,14 @@
   // ---------------------------------------------------------------- tab definitions
   const RULES = {
     s1: '<b>System 1 · Trend following (weekly, large caps, wealth creation).</b> Buy when the weekly RSI(14) closes above 60. Stop loss = previous week\'s 20-week SMA. Exit on a weekly close below the 20 SMA. Add (pyramid) when the rising SMA reaches your entry — never average down. Filters: strong sector, near all-time high, cup formation.',
-    s2: '<b>System 2 · Cup strategy (scan monthly, trade daily, any stock, 5-year lookback).</b> Resolution point (RP) = cup neckline. Buy at RP + 4 %, SL at RP − 2 %. Level 1: sell a third at +10 / +20 / +30 % and trail the SL to the previous level. Level 2: keep the last third with a trailing SL. Max target = cup depth above RP. Expect 1:3 in 4–8 weeks.',
+    s2: '<b>System 2 · Cup strategy (scan monthly, trade daily, any stock).</b> The cup must be at least <b>5 years wide</b> — the longer the cup, the stronger the move. Resolution point (RP) = cup neckline. Buy at RP + 4 %, SL at RP − 2 %. Level 1: sell a third at +10 / +20 / +30 % and trail the SL to the previous level. Level 2: keep the last third with a trailing SL. Max target = cup depth above RP. Expect 1:3 in 4–8 weeks.',
     s3: '<b>System 3 · Positional (monthly RSI near 40).</b> Monthly RSI(14) between 40 and 50 — never below 40. Buy above the high of the first green weekly candle after a dip. SL = weekly swing low. Target 1 = 1:3; target 2 = the monthly swing high. Look for asymmetric risk (1:10).',
     journal: '<b>Trade journal.</b> Entry date · entry · SL · risk per share · risk per trade · qty · exit price · exit date · P&L. Open trades show live P&L and rule alerts: stop hit, target reached (move the SL up), System-1 exit (weekly close below 20 SMA) and pyramid (SMA has reached your entry).',
     sectors: '<b>Sector strength (top-down filter).</b> Median 13-week and 4-week return of each Nifty 500 industry. System 1 says to start from the strongest sectors.',
   };
   const CHIPS = {
     s1: [['all', 'All'], ['buy', 'Fresh buys'], ['trend', 'In trend'], ['exit', 'Exits']],
-    s2: [['all', 'All'], ['triggered', 'Triggered'], ['breakout', 'Above RP'], ['approaching', 'Approaching'], ['extended', 'Extended']],
+    s2: [['all', 'All'], ['triggered', 'Triggered'], ['breakout', 'Above RP'], ['approaching', 'Approaching'], ['extended', 'Resolved earlier']],
     s3: [['all', 'All'], ['triggered', 'Triggered'], ['setup', 'Setup'], ['extended', 'Extended']],
     journal: [['all', 'All'], ['open', 'Open'], ['closed', 'Closed']],
     sectors: [],
@@ -199,14 +199,14 @@
     ],
     s2: [
       { key: 'symbol', label: 'Stock', render: stockCell },
-      { key: 'status', label: 'Status', render: r => `<span class="badge ${r.status}">${{ triggered: 'Triggered', breakout: 'Above RP', approaching: 'Approaching', extended: 'Extended' }[r.status]}</span>${r.cup_completed ? '' : ' <span class="badge prov" title="Cup not yet resolved on the monthly chart">forming</span>'}` },
+      { key: 'status', label: 'Status', render: r => `<span class="badge ${r.status}">${{ triggered: 'Triggered', breakout: 'Above RP', approaching: 'Approaching', extended: 'Resolved earlier' }[r.status]}</span>${r.cup_completed ? '' : ' <span class="badge prov" title="Cup not yet resolved on the monthly chart">forming</span>'}${r.rim_at_data_start ? ' <span class="badge prov" title="The neckline is the first month of our 10-year history, so the cup may be even older">≥10 yrs?</span>' : ''}` },
       { key: 'ltp', label: 'LTP', num: true, render: ltpCell, get: livePx },
       { key: 'chg', label: 'Day %', num: true, render: chgCell, get: r => (state.quotes[r.token] || {}).change_pct ?? -999 },
       { key: 'rp', label: 'RP (neckline)', num: true, render: r => `${fmt(r.rp)}<span class="nm">${r.rp_date}</span>` },
       { key: 'vs_rp', label: 'vs RP', num: true, render: r => `<span class="${cls(livePx(r) - r.rp)}">${pct((livePx(r) - r.rp) / r.rp * 100)}</span>`, get: r => (livePx(r) - r.rp) / r.rp * 100 },
       { key: 'entry', label: 'Entry (+4%)', num: true, render: r => fmt(r.plan.entry), get: r => r.plan.entry },
       { key: 'sl', label: 'SL (−2%)', num: true, render: r => fmt(r.plan.sl), get: r => r.plan.sl },
-      { key: 'depth_pct', label: 'Depth / months', num: true, render: r => `${r.depth_pct}%<span class="nm">${r.months} mo</span>` },
+      { key: 'years', label: 'Width / depth', num: true, render: r => `${r.years} yrs<span class="nm">${r.depth_pct}% deep</span>`, get: r => r.years },
       { key: 'trigger_date', label: 'Triggered', render: r => r.trigger_date ? `${r.trigger_date}<span class="nm">${r.days_since_trigger} d · ${pct(r.gain_pct)}</span>` : '—' },
       { key: 'sector_rank', label: 'Sector', render: sectorCell },
     ],
@@ -321,7 +321,7 @@
   function renderTiles() {
     const d = state.data; let tiles = [];
     if (state.tab === 's1') { const s = d.system1; tiles = [['Fresh buys', s.filter(r => r.state === 'buy').length, 'RSI crossed 60 in the last 4 weeks'], ['In trend', s.filter(r => r.state === 'trend').length, 'RSI > 60 and above the 20 SMA'], ['Exits', s.filter(r => r.state === 'exit').length, 'closed below the 20 SMA this week'], ['Near ATH', s.filter(r => r.pct_from_ath > -5).length, 'within 5% of all-time high']]; }
-    else if (state.tab === 's2') { const s = d.system2; tiles = [['Triggered', s.filter(r => r.status === 'triggered').length, 'crossed RP + 4% within 8 weeks'], ['Above RP', s.filter(r => r.status === 'breakout').length, 'waiting for the +4% filter'], ['Approaching', s.filter(r => r.status === 'approaching').length, 'within 10% below the neckline'], ['Extended', s.filter(r => r.status === 'extended').length, 'triggered more than 8 weeks ago']]; }
+    else if (state.tab === 's2') { const s = d.system2; tiles = [['Triggered', s.filter(r => r.status === 'triggered').length, 'crossed RP + 4% within 8 weeks'], ['Above RP', s.filter(r => r.status === 'breakout').length, 'waiting for the +4% filter'], ['Approaching', s.filter(r => r.status === 'approaching').length, 'within 20% below a 5-year-old neckline'], ['Resolved earlier', s.filter(r => r.status === 'extended').length, 'broke out more than 8 weeks ago — shows what the system produces']]; }
     else if (state.tab === 's3') { const s = d.system3; tiles = [['Triggered', s.filter(r => r.status === 'triggered').length, 'price crossed the signal high'], ['Setups', s.filter(r => r.status === 'setup').length, 'signal candle formed, waiting'], ['Asymmetric', s.filter(r => r.plan.rr_target2 >= 10).length, '≥ 1:10 to the monthly swing high'], ['Monthly RSI 40–50', s.length, 'of ' + d.scanned + ' scanned']]; }
     else if (state.tab === 'journal') { const o = state.journal.filter(t => t.status !== 'closed'), c = state.journal.filter(t => t.status === 'closed'); const open = o.reduce((a, t) => a + pnl(t), 0), realised = c.reduce((a, t) => a + pnl(t), 0); const risk = o.reduce((a, t) => a + (t.entry - t.sl) * t.qty, 0); tiles = [['Open trades', o.length, `${inr(o.reduce((a, t) => a + t.entry * t.qty, 0))} invested`], ['Open P&L', `<span class="${cls(open)}">${inr(open)}</span>`, 'at the latest price'], ['Realised P&L', `<span class="${cls(realised)}">${inr(realised)}</span>`, `${c.length} closed`], ['Risk on table', inr(risk), `${(risk / state.settings.capital * 100).toFixed(1)}% of capital`]]; }
     else { tiles = [['Strongest sector', (d.sectors[0] || {}).industry || '—', pct((d.sectors[0] || {}).ret_13w) + ' over 13 weeks'], ['Weakest sector', (d.sectors[d.sectors.length - 1] || {}).industry || '—', pct((d.sectors[d.sectors.length - 1] || {}).ret_13w) + ' over 13 weeks']]; }
@@ -371,7 +371,7 @@
       const third = Math.floor(qty / 3);
       const rows = p.level1.map((t, i) => `<tr><td>Level-1 target ${i + 1} (+${(i + 1) * 10}%)</td><td class="num">${fmt(t)}</td><td class="num">sell ${third}</td><td>${i === 0 ? `move SL to entry ${fmt(entry)}` : `move SL to ${fmt(p.level1[i - 1])}`}</td></tr>`).join('');
       html += `<table><thead><tr><th>Level</th><th class="num">Price</th><th class="num">Action</th><th>Then</th></tr></thead><tbody>${rows}<tr><td>Level 2 — keep last third</td><td class="num">${fmt(p.max_target)}</td><td class="num">max target</td><td>trail: at +40% SL→+30%, +50%→+40%, +60%→+50%…</td></tr></tbody></table>`;
-      html += `<div class="note">Cup ${r.depth_pct}% deep over ${r.months} months, neckline ${fmt(r.rp)} (${r.rp_date}). Level-3 variant: +20 / +40 / +60% (${p.level3.map(x => fmt(x)).join(' / ')}). Reward at level-1 target 3: ${((p.level1[2] - entry) / rps).toFixed(1)}:1.</div>`;
+      html += `<div class="note">Cup ${r.years} years wide and ${r.depth_pct}% deep, neckline ${fmt(r.rp)} (${r.rp_date})${r.rim_at_data_start ? ' — at the start of our data, so possibly older' : ''}. Level-3 variant: +20 / +40 / +60% (${p.level3.map(x => fmt(x)).join(' / ')}). Reward at level-1 target 3: ${((p.level1[2] - entry) / rps).toFixed(1)}:1.</div>`;
       targets = p.level1;
     } else {
       html += `<table><thead><tr><th>Target</th><th class="num">Price</th><th class="num">Reward</th></tr></thead><tbody><tr><td>Target 1 (1:3)</td><td class="num">${fmt(p.target1)}</td><td class="num">3:1</td></tr><tr><td>Target 2 (monthly swing high)</td><td class="num">${fmt(p.target2)}</td><td class="num">${p.rr_target2}:1</td></tr></tbody></table>`;
