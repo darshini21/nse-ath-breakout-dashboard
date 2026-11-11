@@ -59,6 +59,40 @@ def build():
         payload = {"symbol": r["symbol"], "W": _candles(to_weekly(df)), "D": _candles(df[df["date"] >= cutoff])}
         (SITE / "data" / "history" / f"{r['symbol']}.json").write_text(json.dumps(payload, separators=(",", ":")))
 
+    # Malkan systems page + its data
+    from .malkan import load_malkan, MalkanParams
+    from .indicators import rsi, sma, to_monthly, to_weekly as tw
+    mk = load_malkan()
+    if mk:
+        for f in ("malkan.html", "malkan.js"):
+            shutil.copy(C.WEB / f, SITE / f)
+        (SITE / "data" / "malkan.json").write_text(json.dumps(mk, separators=(",", ":")))
+        (SITE / "data" / "mhist").mkdir(exist_ok=True)
+        p = MalkanParams.from_dict(mk.get("params", {}))
+        syms = {r["symbol"] for k in ("system1", "system2", "system3") for r in mk.get(k, [])}
+
+        def pack(bars, ind):
+            b = bars.copy()
+            if ind:
+                b["rsi"] = rsi(b["close"], p.rsi_period)
+                b["sma"] = sma(b["close"], p.ma_period)
+            out = []
+            for row in b.itertuples(index=False):
+                rec = [row.date.strftime("%Y-%m-%d"), float(row.open), float(row.high), float(row.low), float(row.close), int(row.volume)]
+                if ind:
+                    rec += [None if pd.isna(row.rsi) else round(float(row.rsi), 1), None if pd.isna(row.sma) else round(float(row.sma), 2)]
+                out.append(rec)
+            return out
+
+        for sym in sorted(syms):
+            df = load_history(sym)
+            if df is None or df.empty:
+                continue
+            cut = df["date"].iloc[-1] - pd.Timedelta(days=366)
+            payload = {"symbol": sym, "W": pack(tw(df), True), "M": pack(to_monthly(df), True), "D": pack(df[df["date"] >= cut], False)}
+            (SITE / "data" / "mhist" / f"{sym}.json").write_text(json.dumps(payload, separators=(",", ":")))
+        print(f"Malkan page: {len(syms)} stocks with charts")
+
     size = sum(p.stat().st_size for p in SITE.rglob("*") if p.is_file()) / 1e6
     print(f"Static site built in {SITE} ({len(rows)} stocks, {size:.1f} MB)")
 

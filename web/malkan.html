@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Malkan Systems</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>Malkan's view, in action</h1>
+    <div class="sub">Nifty 500 scanned for the three systems from the class notes, with near-real-time prices and a trade journal. <a href="index.html">All-time-high breakout screener →</a></div>
+  </div>
+  <div class="indices" id="indices"></div>
+  <div class="status">
+    <span class="pill" id="market-pill">Market —</span>
+    <span class="pill" id="feed-pill">Feed —</span>
+    <button class="ghost" id="refresh-btn" title="Fetch the latest prices now">↻</button>
+    <button class="ghost" id="theme-btn" title="Toggle light/dark">◐</button>
+  </div>
+</header>
+
+<div class="banner hidden info" id="upstox-banner">
+  Prices are the latest <strong>1-minute candle closes from Upstox's public API</strong> (about a minute behind), refreshed every <span id="poll-secs">60</span> s during market hours. Signals are computed on completed weekly/monthly bars after each close<span id="static-note" class="hidden">; this copy was built <span id="built-at">—</span></span>.
+</div>
+<div class="banner hidden warn" id="err-banner"></div>
+
+<section class="settings">
+  <label>Capital ₹ <input id="s-capital" type="number" min="10000" step="10000"></label>
+  <label>Risk per trade % <input id="s-risk" type="number" min="0.1" max="5" step="0.1"></label>
+  <span class="rpt">Risk per trade = <strong id="s-rpt">—</strong></span>
+  <span class="muted" id="scan-meta"></span>
+  <button id="rescan-btn" class="ghost" title="Re-run the three scanners on stored history">Re-scan</button>
+</section>
+
+<nav class="tabs big" id="tabs">
+  <button class="tab active" data-tab="s1">System 1 · Trend <span class="count" id="n-s1">0</span></button>
+  <button class="tab" data-tab="s2">System 2 · Cup <span class="count" id="n-s2">0</span></button>
+  <button class="tab" data-tab="s3">System 3 · Positional <span class="count" id="n-s3">0</span></button>
+  <button class="tab" data-tab="journal">Journal <span class="count" id="n-journal">0</span></button>
+  <button class="tab" data-tab="sectors">Sector strength</button>
+</nav>
+
+<div class="rules" id="rules"></div>
+<section class="tiles" id="tiles"></section>
+
+<section class="filters" id="filters">
+  <div class="chips" id="chips"></div>
+  <label>Sector <select id="f-sector"><option value="">all</option></select></label>
+  <label class="grow">Search <input id="f-search" type="search" placeholder="symbol or company"></label>
+</section>
+
+<main class="layout">
+  <section class="panel">
+    <div class="table-wrap tall">
+      <table id="grid"><thead id="grid-head"></thead><tbody id="grid-body"></tbody></table>
+      <div class="empty hidden" id="empty">Nothing matches the current filters.</div>
+    </div>
+    <div class="journal-form hidden" id="journal-form">
+      <h3 id="jf-title">Add trade</h3>
+      <div class="jf-grid">
+        <label>Stock <input id="jf-symbol" readonly></label>
+        <label>System <select id="jf-system"><option value="1">1 · Trend</option><option value="2">2 · Cup</option><option value="3">3 · Positional</option></select></label>
+        <label>Entry date <input id="jf-date" type="date"></label>
+        <label>Entry ₹ <input id="jf-entry" type="number" step="0.05"></label>
+        <label>Stop loss ₹ <input id="jf-sl" type="number" step="0.05"></label>
+        <label>Qty <input id="jf-qty" type="number" step="1"></label>
+        <label>Targets (comma) <input id="jf-targets" placeholder="e.g. 572, 624, 676"></label>
+        <label class="wide">Notes <input id="jf-notes"></label>
+        <label>Exit date <input id="jf-exit-date" type="date"></label>
+        <label>Exit price ₹ <input id="jf-exit" type="number" step="0.05"></label>
+      </div>
+      <div class="jf-actions">
+        <button id="jf-save">Save</button>
+        <button class="ghost" id="jf-cancel">Cancel</button>
+        <button class="ghost danger hidden" id="jf-delete">Delete</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel detail" id="detail">
+    <div class="detail-empty" id="detail-empty">Select a stock to see its chart, RSI and the trade plan.</div>
+    <div class="detail-body hidden" id="detail-body">
+      <div class="detail-head">
+        <div>
+          <div class="sym"><span id="d-symbol"></span> <span class="badge" id="d-status"></span></div>
+          <div class="muted" id="d-name"></div>
+        </div>
+        <div class="price"><div class="ltp" id="d-ltp">—</div><div class="chg" id="d-chg">—</div></div>
+      </div>
+      <div class="chart-tools">
+        <button class="seg active" data-tf="W">Weekly</button><button class="seg" data-tf="M">Monthly</button><button class="seg" data-tf="D">Daily</button>
+        <span class="legend"><i class="sw sma"></i>20 SMA <i class="sw lvl"></i>Entry / SL / targets</span>
+      </div>
+      <div id="chart" class="chart"></div>
+      <div id="rsi-chart" class="chart rsi"></div>
+      <div class="plan" id="plan"></div>
+    </div>
+  </aside>
+</main>
+
+<footer class="foot">Rules transcribed from the class notes; parameters are adjustable in app/malkan.py. Not investment advice.</footer>
+<script src="malkan.js"></script>
+</body>
+</html>

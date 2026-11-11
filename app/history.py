@@ -58,8 +58,11 @@ def _update_one(row, today: date, target: date, floor: date, full: bool) -> str:
     return "updated"
 
 
-def update_all(symbols: list[str] | None = None, full: bool = False, workers: int = 3):
-    uni = load_universe()
+def update_all(symbols: list[str] | None = None, full: bool = False, workers: int = 3,
+               universe: pd.DataFrame | None = None):
+    """Update history for the breakout universe, or for the DataFrame passed in `universe`
+    (needs columns symbol, upstox_key, listing_date)."""
+    uni = universe if universe is not None else load_universe()
     if "upstox_key" not in uni.columns:
         from .universe import build_universe
         uni = build_universe()

@@ -46,6 +46,7 @@ jobs:
           python -m app.cli universe
           python -m app.cli history
           python -m app.cli screen
+          python -m app.cli malkan
           python -m app.export
 
       - uses: actions/upload-pages-artifact@v3

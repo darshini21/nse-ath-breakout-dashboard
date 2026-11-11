@@ -8,3 +8,5 @@ data/results.json
 __pycache__/
 *.pyc
 .venv/
+data/journal.json
+data/malkan.json

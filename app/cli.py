@@ -5,6 +5,7 @@
   python -m app.cli screen [--depth 15 --weeks 7 --age 0]   run the breakout screen
   python -m app.cli serve               start the dashboard
   python -m app.cli export              build the static site (./site) for GitHub Pages
+  python -m app.cli malkan              scan the Nifty 500 for Malkan system 1/2/3 signals
   python -m app.cli all                 universe -> history -> screen -> serve
 """
 from __future__ import annotations
@@ -28,15 +29,25 @@ def main(argv=None):
     s.add_argument("--age", type=int, default=None, help="max days since breakout, 0 = any (default 0)")
     sub.add_parser("serve").add_argument("--port", type=int, default=C.PORT)
     sub.add_parser("export", help="build the static site in ./site for GitHub Pages")
+    sub.add_parser("malkan", help="scan the Nifty 500 for Malkan system 1/2/3 signals")
     sub.add_parser("all")
     a = ap.parse_args(argv)
 
     if a.cmd == "universe":
         from .universe import build_universe
+        from .nifty500 import build_nifty500
         build_universe(refresh=a.refresh)
+        build_nifty500(refresh=a.refresh)
     elif a.cmd == "history":
         from .history import update_all
+        from .nifty500 import load_nifty500
         update_all(a.symbols or None, full=a.full)
+        if not a.symbols:
+            update_all(full=a.full, universe=load_nifty500())
+    elif a.cmd == "malkan":
+        from .malkan import run_malkan
+        out = run_malkan()
+        print(f"Scanned {out['scanned']} Nifty 500 stocks: system1 {len(out['system1'])}, system2 {len(out['system2'])}, system3 {len(out['system3'])}")
     elif a.cmd == "screen":
         from .config import ScreenParams
         from .screener import run_screen
@@ -57,12 +68,11 @@ def main(argv=None):
         from .universe import build_universe
         from .history import update_all
         from .screener import run_screen
-        build_universe()
-        if C.HAS_CREDS:
-            update_all()
-        else:
-            print("No credentials in .env - skipping history download.", file=sys.stderr)
-        run_screen()
+        from .nifty500 import build_nifty500, load_nifty500
+        from .malkan import run_malkan
+        build_universe(); build_nifty500()
+        update_all(); update_all(universe=load_nifty500())
+        run_screen(); run_malkan()
         import uvicorn
         uvicorn.run("app.server:app", host="127.0.0.1", port=C.PORT, log_level="info")
 

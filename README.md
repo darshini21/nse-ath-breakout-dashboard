@@ -101,3 +101,23 @@ history of earlier bases.
   cadence and will pick up a Muhurat-type session, just more slowly.
 * Pattern rules are heuristics with tunable parameters, not a guarantee of anything.
   This is not investment advice.
+
+## Malkan systems dashboard (`malkan.html`)
+
+A second page implements the three systems from the Malkansview class notes on the
+**Nifty 500**, with the same live prices and a trade journal:
+
+| System | Scan | Entry | Stop loss | Targets / exit |
+|---|---|---|---|---|
+| 1 · Trend following | weekly RSI(14) closes above 60 | current price | previous week's 20-week SMA | exit on a weekly close below the 20 SMA; pyramid when the SMA reaches your entry |
+| 2 · Cup | monthly chart, 5-year lookback, cup ≥ 15 % deep and ≥ 3 months | RP (neckline) + 4 % | RP − 2 % | level 1: +10/20/30 % selling a third each and trailing the SL; level 2 keeps the last third; max target = cup depth |
+| 3 · Positional | monthly RSI(14) between 40 and 50 | high of the first green weekly candle | weekly swing low | target 1 = 1:3, target 2 = monthly swing high |
+
+Position size = (capital × risk %) ÷ (entry − SL); capital and risk are set at the top of
+the page. The journal stores entry date, entry, SL, risk per share/trade, qty, exit and
+P&L, and raises alerts (stop hit, target reached, System-1 exit, pyramid). Locally it is
+`data/journal.json`; on the hosted copy it lives in the browser's local storage.
+
+Commands: `run.cmd universe` (also builds `data/nifty500.csv`), `run.cmd history` (also
+updates Nifty 500 history), `run.cmd malkan` (writes `data/malkan.json`). The GitHub
+Action runs all of it daily. Sector strength = median 13-week return per NSE industry.

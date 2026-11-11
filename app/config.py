@@ -41,7 +41,7 @@ INDEX_TOKENS = {"99926000": "NIFTY 50", "99926009": "NIFTY BANK", "99926004": "N
 UPSTOX_INDEX_KEYS = {"99926000": "NSE_INDEX|Nifty 50", "99926009": "NSE_INDEX|Nifty Bank", "99926004": "NSE_INDEX|Nifty 500"}
 
 # Upstox public candle API (keyless) - request pacing and live polling cadence
-UPSTOX_REQ_PER_SEC = float(os.getenv("UPSTOX_REQ_PER_SEC", "2.5"))
+UPSTOX_REQ_PER_SEC = float(os.getenv("UPSTOX_REQ_PER_SEC", "4"))
 LIVE_POLL_SECONDS = int(os.getenv("LIVE_POLL_SECONDS", "60"))      # during market hours
 IDLE_POLL_SECONDS = int(os.getenv("IDLE_POLL_SECONDS", "600"))     # outside market hours
 SIMULATE = os.getenv("SIMULATE", "0") == "1"                       # force the random-walk demo feed
